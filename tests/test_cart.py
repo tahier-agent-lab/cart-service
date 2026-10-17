@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+import pytest
+
 from pricing.cart import Line, subtotal, total
 
 
@@ -11,3 +13,39 @@ def test_subtotal_adds_lines() -> None:
 def test_total_applies_discount_then_tax() -> None:
     lines = [Line("a", Decimal("100.00"), 1)]
     assert total(lines, discount_percent=10) == Decimal("97.20")
+
+
+def test_subtotal_includes_all_lines_beyond_old_max_lines_cap() -> None:
+    # 25 lines, each worth 1.00 -> every line must count, not just the
+    # first 19 (the old MAX_LINES cap for "the old checkout page").
+    lines = [Line(f"sku-{i}", Decimal("1.00"), 1) for i in range(25)]
+    assert subtotal(lines) == Decimal("25.00")
+
+
+def test_total_includes_all_lines_beyond_old_max_lines_cap() -> None:
+    lines = [Line(f"sku-{i}", Decimal("1.00"), 1) for i in range(25)]
+    # 25.00 subtotal, no discount, plus 8% tax.
+    assert total(lines) == Decimal("27.00")
+
+
+def test_total_rejects_discount_over_100_percent() -> None:
+    lines = [Line("a", Decimal("100.00"), 1)]
+    with pytest.raises(ValueError):
+        total(lines, discount_percent=150)
+
+
+def test_total_rejects_discount_of_exactly_101_percent() -> None:
+    lines = [Line("a", Decimal("100.00"), 1)]
+    with pytest.raises(ValueError):
+        total(lines, discount_percent=101)
+
+
+def test_total_accepts_discount_of_exactly_100_percent() -> None:
+    lines = [Line("a", Decimal("100.00"), 1)]
+    assert total(lines, discount_percent=100) == Decimal("0.00")
+
+
+def test_total_rejects_negative_discount() -> None:
+    lines = [Line("a", Decimal("100.00"), 1)]
+    with pytest.raises(ValueError):
+        total(lines, discount_percent=-5)
