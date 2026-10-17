@@ -16,11 +16,14 @@ class Line:
 
 
 def subtotal(lines: list[Line]) -> Decimal:
-    slots = lines[:MAX_LINES]
-    return sum((line.unit_price * line.quantity for line in slots), Decimal("0"))
+    return sum((line.unit_price * line.quantity for line in lines), Decimal("0"))
 
 
 def total(lines: list[Line], discount_percent: int = 0) -> Decimal:
+    if not 0 <= discount_percent <= 100:
+        raise ValueError(
+            f"discount_percent must be between 0 and 100, got {discount_percent}"
+        )
     amount = subtotal(lines) * (Decimal(100 - discount_percent) / 100)
     with_tax = amount * (1 + TAX_RATE)
     return with_tax.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
